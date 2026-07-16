@@ -10,8 +10,9 @@ terraform {
 
 provider "azurerm" {
   features {}
+  # Allows pipeline to run without credentials
+  skip_provider_registration = true 
 }
-
 # Resource Group
 resource "azurerm_resource_group" "rg_vault" {
   name     = "rg-fintech-${replace(lower(var.project_name), "-", "")}-${lower(var.environment)}"
