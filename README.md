@@ -1,63 +1,62 @@
-# Project Vault: Azure Hardened Architecture under Zero Trust Model
+# Project Vault: Azure Security Fundamentals Lab (Phase 1)
 
 **Read this in:** [English](README.md) | [Español](README.es.md) | [Italiano](README.it.md)
 
 ## 🎯 Overview
-**Project Vault** is a critical infrastructure implementation in **Microsoft Azure** designed under the **Security by Design** paradigm. We centralize asset governance into an immutable, auditable, and scalable **Terraform** codebase, eliminating error-prone manual configurations.
+**Project Vault** is a small, deliberately scoped Terraform lab in Microsoft Azure. It provisions a Resource Group, a segmented Virtual Network, a default-deny Network Security Group (inbound *and* outbound), and a Key Vault with RBAC-based access control and purge protection enabled.
+
+This is **Phase 1** of a 3-part portfolio exploring cloud security engineering. It intentionally does not claim to be a full "Zero Trust architecture" — it demonstrates the foundational controls that any hardened Azure environment needs to get right first: network segmentation, least-privilege secret access, and protection against accidental or malicious resource deletion.
 
 ## 💡 Why Project Vault?
-I created this project as a technical demonstration of my ability to implement professional cloud environments. With **Project Vault**, I aim to validate and showcase my mastery in:
-* **Security:** Practical application of *Zero Trust* and *Least Privilege* principles.
-* **Automation:** Mastery of *Infrastructure as Code* (IaC) to eliminate human intervention and ensure consistency.
-* **DevSecOps:** Integration of CI/CD workflows that ensure security is verified before, during, and after deployment.
-This repository is my "best practices laboratory," where I demonstrate how to transform abstract security requirements into a functional, maintainable, and production-ready technical architecture.
+I built this to practice — and be able to defend in detail — the fundamentals of secure Azure provisioning via Infrastructure as Code:
+* **Network segmentation:** default-deny NSG rules in both directions, not just inbound.
+* **Secret management with actual access control:** a Key Vault that has purge protection on and an explicit RBAC role assignment, not just a vault sitting there unprotected.
+* **Reproducibility:** the entire environment is defined in version-controlled Terraform, so it can be destroyed and recreated identically.
 
 ## 🏗️ Architecture Diagram
 ![Security Architecture](assets/diagrama_arquitectura.jpg)
 
-## 🛡️ Strategic Security Pillars
-* **Centralized Secret Management:** Integration of **Azure Key Vault** to abstract the credential lifecycle.
-* **Network Segmentation:** **NSG** with "Deny All" posture, allowing only strictly necessary traffic.
-* **IaC Governance:** Total traceability of changes through version control.
+## 🛡️ What's Actually Implemented
+* **Key Vault, hardened:** `purge_protection_enabled = true` (a permanently deleted vault is not recoverable during the soft-delete window without this), RBAC authorization enabled, with an explicit `Key Vault Secrets Officer` role assignment — without this, the vault exists but nothing has permission to read or write secrets to it.
+* **Network Security Group, both directions:** explicit allow rules for HTTPS (443) inbound and outbound, with a deny-all catch-all rule (priority 4096) on each direction. Azure allows all outbound traffic by default unless you restrict it — this NSG restricts both.
+* **IaC governance:** all resources defined and versioned in Terraform; no manual portal configuration.
 
-## 🔍 Component Analysis (Infrastructure as Code)
-I have structured the project following modularity best practices, separating the logic into four key blocks:
-
-### 1. `main.tf` - Orchestration
+## 🔍 Component Breakdown
+### 1. `main.tf` — Orchestration
 ![main.tf Analysis](assets/main.png)
-* **Function:** Defines the main deployment and resource interconnection in Azure, serving as the logical entry point for the entire architecture.
+* Defines the provider, Resource Group, VNet, subnet, and the NSG-to-subnet association.
 
-### 2. `security.tf` - Hardening
+### 2. `security.tf` — Hardening
 ![security.tf Analysis](assets/security.png)
-* **Function:** Centralizes **Network Security Group (NSG)** logic and **Key Vault** access policies, keeping security rules isolated from the general provisioning code.
+* NSG rules (inbound + outbound, default-deny) and the Key Vault, including its RBAC role assignment.
 
-### 3. `variables.tf` - Parameterization
+### 3. `variables.tf` — Parameterization
 ![variables.tf Analysis](assets/variables.png)
-* **Function:** Defines input variables (names, regions, SKUs), allowing the infrastructure to be reusable across different environments (Dev/Staging/Prod) without modifying the core code.
+* Input variables (region, environment, project name) with sane defaults.
 
-### 4. `outputs.tf` - Traceability
+### 4. `outputs.tf` — Traceability
 ![outputs.tf Analysis](assets/outputs.png)
-* **Function:** Exposes critical post-deployment data (resource IDs, endpoint URLs), facilitating integration with other services and immediate validation of the final state.
+* Exposes the Resource Group name, VNet ID, and Key Vault URI post-deployment.
 
 ---
 
 ## 🛠️ Tech Stack
-This project uses a modern ecosystem focused on cloud and security:
-* **Cloud:** Microsoft Azure (Resource Group, Key Vault, Virtual Network, NSG).
-* **IaC:** HashiCorp Terraform (v1.x).
-* **Security:** Zero Trust Architecture, Granular IAM, Network Security Groups.
-* **CI/CD:** GitHub Actions (Automated Workflows).
-* **Version Control:** Git (GitHub).
+* **Cloud:** Microsoft Azure (Resource Group, Key Vault with RBAC, Virtual Network, NSG)
+* **IaC:** HashiCorp Terraform (`azurerm` provider ~> 3.0)
+* **Version Control:** Git (GitHub)
 
-## 🤖 DevSecOps Lifecycle (CI/CD)
-Code quality is ensured via **GitHub Actions**, implementing **Shift-Left Security**:
+## 🤖 CI/CD
+GitHub Actions runs `terraform init` and `terraform validate` on every push/PR to `main` — a syntax and internal-consistency check, run without backend or Azure credentials configured. It does not run `plan` or `apply` against a live subscription.
 
 ![Terraform CI/CD](https://github.com/luis-troccoli/project-vault/actions/workflows/terraform-pipeline.yml/badge.svg)
 
-## 📈 Scalability Roadmap
-* **Remote Backend:** Migration to *Azure Storage Account* with state locking for collaborative work.
-* **Reusable Modules:** Refactoring to standardize multi-environment deployments.
-* **SAST Analysis:** Automatic integration of `tfsec` or `checkov` for vulnerability scanning at compile time.
+*No SAST/security scanning (tfsec/checkov) is integrated yet in this phase — that gap is closed in [Secure Cloud Foundation](https://github.com/luis-troccoli/secure-cloud-foundation) (Phase 2), along with federated OIDC authentication replacing static credentials.*
+
+## 📈 Roadmap (carried into later phases)
+* **SAST scanning:** `tfsec`/`checkov` integration — addressed in Phase 2.
+* **Federated auth:** replace static credentials in CI with OIDC — addressed in Phase 2.
+* **Remote backend:** Azure Storage Account with state locking, for collaborative work.
+* **Reusable modules:** refactor into `/modules` — addressed in Phase 3.
 
 ## 🚀 Deployment Guide
 1. `az login`

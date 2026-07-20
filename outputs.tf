@@ -7,3 +7,8 @@ output "vnet_id" {
   description = "VNet ID"
   value       = azurerm_virtual_network.vnet_vault.id
 }
+
+output "key_vault_uri" {
+  description = "URI of the deployed Key Vault"
+  value       = azurerm_key_vault.vault_secrets.vault_uri
+}

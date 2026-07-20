@@ -9,15 +9,26 @@ terraform {
 }
 
 provider "azurerm" {
-  features {}
-  # Allows pipeline to run without credentials
-  skip_provider_registration = true 
+  features {
+    key_vault {
+      # Ensures Terraform can still purge in dev/test cycles even with
+      # purge protection enabled at the resource level (see security.tf)
+      purge_soft_delete_on_destroy = true
+    }
+  }
+  # NOTE: skip_provider_registration should only be true when the
+  # executing identity lacks Owner/Contributor at the subscription level
+  # (common in CI service principals with scoped permissions).
+  # It does NOT mean this can run without credentials -- a valid
+  # azurerm auth (OIDC, SP, or CLI login) is still required for plan/apply.
+  skip_provider_registration = true
 }
+
 # Resource Group
 resource "azurerm_resource_group" "rg_vault" {
   name     = "rg-fintech-${replace(lower(var.project_name), "-", "")}-${lower(var.environment)}"
   location = var.location
-  
+
   tags = {
     Environment = var.environment
     Project     = var.project_name
